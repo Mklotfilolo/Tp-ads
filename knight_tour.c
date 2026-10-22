@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <stdlib.h>
 
 typedef struct {
     int row;
@@ -100,31 +99,23 @@ void removeFirstSquare(SquareList *list)
 
 int main()
 {
-    Square *visitedStack;
-    SquareList *availableStack;
-    int *moveNumbers;
+    Square visitedStack[64];
+    SquareList availableStack[64];
+    int moveNumbers[64];
     int visitedTop, availableTop;
     int boardSize, rowIndex, columnIndex;
     Square startSquare, nextSquare;
 
-    printf("Enter the board size n: ");
+    printf("Enter the board size n (max 8): ");
     scanf("%d", &boardSize);
     printf("Enter the starting row and column (1 to %d): ", boardSize);
     scanf("%d %d", &startSquare.row, &startSquare.column);
     startSquare.row--;
     startSquare.column--;
 
-    if (boardSize < 1 || startSquare.row < 0 || startSquare.row >= boardSize ||
+    if (boardSize < 1 || boardSize > 8 || startSquare.row < 0 || startSquare.row >= boardSize ||
         startSquare.column < 0 || startSquare.column >= boardSize) {
         printf("Invalid input\n");
-        return 1;
-    }
-
-    visitedStack = malloc(boardSize * boardSize * sizeof(Square));
-    availableStack = malloc(boardSize * boardSize * sizeof(SquareList));
-    moveNumbers = malloc(boardSize * boardSize * sizeof(int));
-    if (visitedStack == NULL || availableStack == NULL || moveNumbers == NULL) {
-        printf("Not enough memory\n");
         return 1;
     }
 
@@ -165,8 +156,5 @@ int main()
         }
     }
 
-    free(visitedStack);
-    free(availableStack);
-    free(moveNumbers);
     return 0;
 }
