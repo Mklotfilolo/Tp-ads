@@ -1,157 +1,125 @@
 #include <stdio.h>
 
-typedef struct {
-    int row;
-    int column;
-} Square;
-
-typedef struct {
-    Square squares[8];
-    int count;
-} SquareList;
-
 int rowMoves[8] = {2, 1, -1, -2, -2, -1, 1, 2};
 int columnMoves[8] = {1, 2, 2, 1, -1, -2, -2, -1};
 
-SquareList availableSquares(int boardSize, Square currentSquare)
-{
-    SquareList list;
-    int moveIndex, newRow, newColumn;
+int boardSize;
+int visitedStack[64][2];
+int visitedTop;
+int availableStack[64][8][2];
+int availableCount[64];
+int availableTop;
 
-    list.count = 0;
+int availableSquares(int row, int column, int list[8][2])
+{
+    int moveIndex, newRow, newColumn;
+    int count = 0;
+
     for (moveIndex = 0; moveIndex < 8; moveIndex++) {
-        newRow = currentSquare.row + rowMoves[moveIndex];
-        newColumn = currentSquare.column + columnMoves[moveIndex];
+        newRow = row + rowMoves[moveIndex];
+        newColumn = column + columnMoves[moveIndex];
         if (newRow >= 0 && newRow < boardSize && newColumn >= 0 && newColumn < boardSize) {
-            list.squares[list.count].row = newRow;
-            list.squares[list.count].column = newColumn;
-            list.count++;
+            list[count][0] = newRow;
+            list[count][1] = newColumn;
+            count++;
         }
     }
-    return list;
+    return count;
 }
 
-int isVisited(Square visitedStack[], int visitedTop, Square square)
+int isVisited(int row, int column)
 {
     int index;
 
     for (index = 0; index <= visitedTop; index++) {
-        if (visitedStack[index].row == square.row && visitedStack[index].column == square.column)
+        if (visitedStack[index][0] == row && visitedStack[index][1] == column)
             return 1;
     }
     return 0;
 }
 
-int countNextMoves(int boardSize, Square square, Square visitedStack[], int visitedTop)
+int unvisitedSquares(int row, int column, int list[8][2])
 {
-    SquareList list;
-    int index, counter;
+    int allSquares[8][2];
+    int allCount, index;
+    int count = 0;
 
-    list = availableSquares(boardSize, square);
-    counter = 0;
-    for (index = 0; index < list.count; index++) {
-        if (!isVisited(visitedStack, visitedTop, list.squares[index]))
-            counter++;
-    }
-    return counter;
-}
-
-SquareList unvisitedSquares(int boardSize, Square square, Square visitedStack[], int visitedTop)
-{
-    SquareList allSquares, result;
-    int index, sortedIndex, previousIndex;
-    int nextMovesCount[8];
-    Square temporarySquare;
-    int temporaryCount;
-
-    allSquares = availableSquares(boardSize, square);
-    result.count = 0;
-    for (index = 0; index < allSquares.count; index++) {
-        if (!isVisited(visitedStack, visitedTop, allSquares.squares[index])) {
-            result.squares[result.count] = allSquares.squares[index];
-            nextMovesCount[result.count] = countNextMoves(boardSize, allSquares.squares[index], visitedStack, visitedTop);
-            result.count++;
+    allCount = availableSquares(row, column, allSquares);
+    for (index = 0; index < allCount; index++) {
+        if (!isVisited(allSquares[index][0], allSquares[index][1])) {
+            list[count][0] = allSquares[index][0];
+            list[count][1] = allSquares[index][1];
+            count++;
         }
     }
-    for (sortedIndex = 1; sortedIndex < result.count; sortedIndex++) {
-        temporarySquare = result.squares[sortedIndex];
-        temporaryCount = nextMovesCount[sortedIndex];
-        previousIndex = sortedIndex - 1;
-        while (previousIndex >= 0 && nextMovesCount[previousIndex] > temporaryCount) {
-            result.squares[previousIndex + 1] = result.squares[previousIndex];
-            nextMovesCount[previousIndex + 1] = nextMovesCount[previousIndex];
-            previousIndex--;
-        }
-        result.squares[previousIndex + 1] = temporarySquare;
-        nextMovesCount[previousIndex + 1] = temporaryCount;
-    }
-    return result;
+    return count;
 }
 
-void removeFirstSquare(SquareList *list)
+void removeFirstSquare(int level)
 {
     int index;
 
-    for (index = 0; index < list->count - 1; index++)
-        list->squares[index] = list->squares[index + 1];
-    list->count--;
+    for (index = 0; index < availableCount[level] - 1; index++) {
+        availableStack[level][index][0] = availableStack[level][index + 1][0];
+        availableStack[level][index][1] = availableStack[level][index + 1][1];
+    }
+    availableCount[level]--;
 }
 
 int main()
 {
-    Square visitedStack[64];
-    SquareList availableStack[64];
-    int moveNumbers[64];
-    int visitedTop, availableTop;
-    int boardSize, rowIndex, columnIndex;
-    Square startSquare, nextSquare;
+    int board[8][8];
+    int startRow, startColumn;
+    int nextRow, nextColumn;
+    int rowIndex, columnIndex, index;
 
-    printf("Enter the board size n (max 8): ");
+    printf("Enter the board size (8): ");
     scanf("%d", &boardSize);
     printf("Enter the starting row and column (1 to %d): ", boardSize);
-    scanf("%d %d", &startSquare.row, &startSquare.column);
-    startSquare.row--;
-    startSquare.column--;
+    scanf("%d %d", &startRow, &startColumn);
+    startRow--;
+    startColumn--;
 
-    if (boardSize < 1 || boardSize > 8 || startSquare.row < 0 || startSquare.row >= boardSize ||
-        startSquare.column < 0 || startSquare.column >= boardSize) {
+    if (boardSize < 1 || boardSize > 8 || startRow < 0 || startRow >= boardSize ||
+        startColumn < 0 || startColumn >= boardSize) {
         printf("Invalid input\n");
         return 1;
     }
-
+    
     printf("Searching for a solution...\n");
 
     visitedTop = 0;
+    visitedStack[0][0] = startRow;
+    visitedStack[0][1] = startColumn;
     availableTop = 0;
-    visitedStack[0] = startSquare;
-    availableStack[0] = unvisitedSquares(boardSize, startSquare, visitedStack, visitedTop);
+    availableCount[0] = unvisitedSquares(startRow, startColumn, availableStack[0]);
 
     while (visitedTop >= 0 && visitedTop < boardSize * boardSize - 1) {
-        if (availableStack[availableTop].count > 0) {
-            nextSquare = availableStack[availableTop].squares[0];
+        if (availableCount[availableTop] > 0) {
+            nextRow = availableStack[availableTop][0][0];
+            nextColumn = availableStack[availableTop][0][1];
             visitedTop++;
-            visitedStack[visitedTop] = nextSquare;
+            visitedStack[visitedTop][0] = nextRow;
+            visitedStack[visitedTop][1] = nextColumn;
             availableTop++;
-            availableStack[availableTop] = unvisitedSquares(boardSize, nextSquare, visitedStack, visitedTop);
+            availableCount[availableTop] = unvisitedSquares(nextRow, nextColumn, availableStack[availableTop]);
         } else {
             visitedTop--;
             availableTop--;
             if (availableTop >= 0)
-                removeFirstSquare(&availableStack[availableTop]);
+                removeFirstSquare(availableTop);
         }
     }
 
     if (visitedTop < 0) {
         printf("No solution found\n");
     } else {
-        printf("Success: the knight visited all %d squares\n", boardSize * boardSize);
-        for (rowIndex = 0; rowIndex < boardSize * boardSize; rowIndex++)
-            moveNumbers[rowIndex] = 0;
-        for (rowIndex = 0; rowIndex <= visitedTop; rowIndex++)
-            moveNumbers[visitedStack[rowIndex].row * boardSize + visitedStack[rowIndex].column] = rowIndex + 1;
+        printf("Success\n");
+        for (index = 0; index <= visitedTop; index++)
+            board[visitedStack[index][0]][visitedStack[index][1]] = index + 1;
         for (rowIndex = 0; rowIndex < boardSize; rowIndex++) {
             for (columnIndex = 0; columnIndex < boardSize; columnIndex++)
-                printf("%4d", moveNumbers[rowIndex * boardSize + columnIndex]);
+                printf("%4d", board[rowIndex][columnIndex]);
             printf("\n");
         }
     }
