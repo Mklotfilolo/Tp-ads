@@ -108,6 +108,6 @@ int main()
     displayStack(A);
     
     HANOI(n,&A,&B,&C);
-    
+    printf("total staps : %d ",setps);
     return 0;
 }
